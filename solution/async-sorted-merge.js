@@ -5,17 +5,17 @@ const FastPriorityQueue = require("fastpriorityqueue");
 module.exports = async (logSources, printer) => {
   const heap = new FastPriorityQueue((a, b) => a.log.date < b.log.date);
   const promiseQueue = {};
-  let activeSource = -1;
+  let currentSource = null;
 
   // Helper function to get next log
   async function fetchNextLog(index) {
-    const log = await source.popAsync();
+    const log = await logSources[index].popAsync();
     if (log) {
       // Places next log in proper location on the stack
       heap.add({ log, index });
     }
     // Updates the queue of promises
-    if (log && index !== activeSource) {
+    if (log && index !== currentSource) {
       if (!promiseQueue[index]) {
         promiseQueue[index] = [fetchNextLog(index)];
       } else {
@@ -32,12 +32,12 @@ module.exports = async (logSources, printer) => {
     const { log, index } = heap.poll();
     printer.print(log);
 
-    // Update the index of the active source
-    activeSource = index;
+    // Update the index of the current source
+    currentSource = index;
 
     // Wait for all pending fetches from the current source before proceeding
     await Promise.all(promiseQueue[index]);
-    activeSource = -1;
+    currentSource = null;
 
     // Dynamically update the queue by adding the next log fetch promise
     promiseQueue[index] = [fetchNextLog(index)];
