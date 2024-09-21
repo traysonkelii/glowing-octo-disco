@@ -15,11 +15,26 @@ O(k) where k is the number of log sources (heap holds one entry per source)
 
 O(n log k) where n is the number of log entries and log k is the cost of a heap operation
 
-## Async solution
+## Async Refactor
 
-I created a custom heap class `MinHeap` to avoid introducing unnecessary dependencies, but I realized the implementation was running for about 120 secs so I thought if I used an OOTB npm package that was optimized it would yield better results. It only shaved off about 5 seconds (not statistically significant but better). I spent the majority of the time trying different solutions here to try and lower the async time and ran into a myriad of concurrency issues (starting the print function from the heap while dynamically adding async calls on the fly introduced conccurent race conditions). In the end I couldn't find the right balance between maintaining the integrity of the data (sequential order) while trying to optimize for speed (concurrent calls). This was the bottle neck of the application.
+1. Concurrency and Asynchronous Operations
 
-Ultimately these were the results (total time spent 90 mins)
+   - Initial Implementation: It would fetch the next log from the same source after printing the current log. Other sources were left idle through this process. Limited concurrency; primarily sequential per source.
 
-![image info](./assets/async-img.png)
-![image info](./assets/sync-img.png)
+   - Improved Implementation: It now continuously fetches logs from all sources concurrently, except the `current` one. While waiting for the next log from one source, it won't block fetching from others. Ultimately keeps all sources busy.
+
+2. Data Structures and Control Mechanisms
+
+   - Initial Implementation: There were no additional data structures for concurrency control, but the code was "simpler" with direct `await` on `popAsync()`.
+
+   - Improved Implementation: I've Introduced a `promiseQueue` to keep track of pending fetches. There is also a `currentSource` variable used to prevent conflicts and manage concurrency. This solution introduced more complexity, but allowed for more control over asynchronous operations.
+
+3. Results
+
+   Initial implementation
+
+   ![image info](./assets/async-img.png)
+
+   Refactored implementation
+
+   ![image info](./assets/async-improved.png)
