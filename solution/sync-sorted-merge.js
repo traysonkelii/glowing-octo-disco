@@ -1,4 +1,3 @@
-// sync-sorted-merge.js
 "use strict";
 
 const MinHeap = require("../lib/min-heap");
